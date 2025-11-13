@@ -1,0 +1,70 @@
+spring:
+  config:
+    import: optional:file:/Users/mac/Downloads/hr-management-system/.env[.properties]
+  application:
+    name: hrManagementSystem
+  r2dbc:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  mail:
+    host: smtp.mail.yahoo.com
+    port: 465
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+            socketFactory:
+              class: javax.net.ssl.SSLSocketFactory
+
+  cache:
+    type: redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /swagger-doc/v3/api-docs
+  swagger-ui:
+    path: /swagger-doc/swagger-ui
+
+rabbitmq:
+  queue:
+    email:
+      name: email_queue
+  exchange:
+    email:
+      name: email_exchange
+  binding:
+    email:
+      name: email_routing_key
+
+jwt:
+  key: ${JWT_KEY}
+
+email:
+  username: ${EMAIL_USERNAME}
+
+logging:
+  level:
+    org.springframework.r2dbc.core: DEBUG
+    io.r2dbc.postgresql.QUERY: DEBUG
+    io.r2dbc.postgresql.PARAM: DEBUG
