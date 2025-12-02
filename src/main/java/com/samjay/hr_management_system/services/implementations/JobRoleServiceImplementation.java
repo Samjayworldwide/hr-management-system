@@ -5,6 +5,7 @@ import com.samjay.hr_management_system.dtos.request.UpdateJobRoleRequest;
 import com.samjay.hr_management_system.dtos.response.ApiResponse;
 import com.samjay.hr_management_system.dtos.response.JobRoleResponse;
 import com.samjay.hr_management_system.entities.JobRole;
+import com.samjay.hr_management_system.globalexception.ApplicationException;
 import com.samjay.hr_management_system.repositories.DepartmentRepository;
 import com.samjay.hr_management_system.repositories.JobRoleRepository;
 import com.samjay.hr_management_system.services.JobRoleService;
@@ -75,34 +76,16 @@ public class JobRoleServiceImplementation implements JobRoleService {
                                                                 return reactiveRedisOperations
                                                                         .opsForValue()
                                                                         .set(cacheKey, jobRoleResponse, CACHE_TTL)
-                                                                        .then(reactiveRedisOperations
-                                                                                .delete(CACHE_KEY_ALL_JOB_ROLES)
-                                                                                .onErrorResume(err -> {
-
-                                                                                    log.warn("Failed to invalidate global cache after creation: {}", err.getMessage());
-
-                                                                                    return Mono.empty();
-                                                                                })
-                                                                                .thenReturn(ApiResponse.<String>success("Job role created successfully"))
-
-                                                                        )
-                                                                        .onErrorResume(redisError -> {
-
-                                                                            log.warn("Failed to cache job role {}: {}", savedJobRole.getId(), redisError.getMessage());
-
-                                                                            return Mono.empty();
-                                                                        })
-                                                                        .thenReturn(ApiResponse.<String>success("Job role created successfully"));
-
-
+                                                                        .then(reactiveRedisOperations.delete(CACHE_KEY_ALL_JOB_ROLES))
+                                                                        .doOnError(redisError -> log.warn("An unexpected error occurred on redis: {}", redisError.getMessage()))
+                                                                        .then(Mono.just(ApiResponse.<String>success("Job role created successfully")))
+                                                                        .onErrorReturn(ApiResponse.<String>success("Job role created successfully"));
                                                             });
-
                                                 })
                                 )
                                 .switchIfEmpty(Mono.just(ApiResponse.error("Department not found"))))
 
                 .onErrorResume(error -> Mono.just(ApiResponse.error("Failed to create job role: " + error.getMessage())));
-
     }
 
     @Override
@@ -118,7 +101,7 @@ public class JobRoleServiceImplementation implements JobRoleService {
                         @SuppressWarnings("unchecked")
                         List<JobRoleResponse> jobRoleResponses = (List<JobRoleResponse>) cachedList;
 
-                        return Mono.just(ApiResponse.success("Job roles fetched successfully (from cache)", jobRoleResponses));
+                        return Mono.just(ApiResponse.success("Job roles fetched successfully", jobRoleResponses));
                     }
 
                     return Mono.empty();
@@ -129,42 +112,42 @@ public class JobRoleServiceImplementation implements JobRoleService {
 
                     return Mono.empty();
 
-                }).switchIfEmpty(
-                        jobRoleRepository
-                                .findAll()
-                                .flatMap(jobRole -> departmentRepository.findById(jobRole.getDepartmentId())
-                                        .map(department -> {
+                }).switchIfEmpty(jobRoleRepository
+                        .findAll()
+                        .flatMap(jobRole -> departmentRepository.findById(jobRole.getDepartmentId())
+                                .map(department -> {
 
-                                            JobRoleResponse response = new JobRoleResponse();
+                                    JobRoleResponse response = new JobRoleResponse();
 
-                                            response.setId(jobRole.getId());
+                                    response.setId(jobRole.getId());
 
-                                            response.setJobPosition(jobRole.getJobPosition());
+                                    response.setJobPosition(jobRole.getJobPosition());
 
-                                            response.setJobDescription(jobRole.getJobDescription());
+                                    response.setJobDescription(jobRole.getJobDescription());
 
-                                            response.setDepartmentName(department.getDepartmentName());
+                                    response.setDepartmentName(department.getDepartmentName());
 
-                                            return response;
-                                        })
-                                        .switchIfEmpty(Mono.empty())
-                                )
-                                .collectList()
-                                .flatMap(jobRoles -> reactiveRedisOperations
-                                        .opsForValue()
-                                        .set(CACHE_KEY_ALL_JOB_ROLES, jobRoles, CACHE_TTL)
-                                        .onErrorResume(redisError -> {
+                                    return response;
 
-                                            log.warn("Failed to cache all job roles: {}", redisError.getMessage());
+                                })
+                                .switchIfEmpty(Mono.error(new ApplicationException("Department not found with given")))
+                        )
+                        .collectList()
+                        .flatMap(jobRoles -> reactiveRedisOperations
+                                .opsForValue()
+                                .set(CACHE_KEY_ALL_JOB_ROLES, jobRoles, CACHE_TTL)
+                                .doOnError(redisError -> log.warn("Failed to cache all job roles: {}", redisError.getMessage()))
+                                .then(Mono.just(ApiResponse.success("Job roles fetched successfully", jobRoles)))
+                                .onErrorReturn(ApiResponse.success("Job roles fetched successfully", jobRoles))
+                        )
+                )
+                .onErrorResume(error -> {
 
-                                            return Mono.empty();
-                                        })
-                                        .thenReturn(ApiResponse.success("Job roles fetched successfully", jobRoles))
-                                )
-                                .onErrorResume(error -> Mono.just(ApiResponse.error("Failed to fetch job roles: " + error.getMessage())))
-                );
+                    log.error("Failed to fetch job roles: {}", error.getMessage());
 
+                    return Mono.just(ApiResponse.error("Failed to fetch job roles."));
 
+                });
     }
 
     @Override
@@ -197,48 +180,39 @@ public class JobRoleServiceImplementation implements JobRoleService {
 
                     return reactiveRedisOperations.delete(cacheKey).then(Mono.empty());
                 })
-                .switchIfEmpty(
-                        jobRoleRepository.findById(id)
-                                .flatMap(jobRole ->
-                                        departmentRepository.findById(jobRole.getDepartmentId())
-                                                .flatMap(department -> {
+                .switchIfEmpty(jobRoleRepository.findById(id)
+                        .flatMap(jobRole -> departmentRepository.findById(jobRole.getDepartmentId())
+                                .flatMap(department -> {
 
-                                                    JobRoleResponse jobRoleResponse = new JobRoleResponse();
+                                    JobRoleResponse jobRoleResponse = new JobRoleResponse();
 
-                                                    jobRoleResponse.setId(jobRole.getId());
+                                    jobRoleResponse.setId(jobRole.getId());
 
-                                                    jobRoleResponse.setJobPosition(jobRole.getJobPosition());
+                                    jobRoleResponse.setJobPosition(jobRole.getJobPosition());
 
-                                                    jobRoleResponse.setJobDescription(jobRole.getJobDescription());
+                                    jobRoleResponse.setJobDescription(jobRole.getJobDescription());
 
-                                                    jobRoleResponse.setDepartmentName(department.getDepartmentName());
+                                    jobRoleResponse.setDepartmentName(department.getDepartmentName());
 
-                                                    return reactiveRedisOperations
-                                                            .opsForValue()
-                                                            .set(cacheKey, jobRoleResponse, CACHE_TTL)
-                                                            .onErrorResume(error -> {
-
-                                                                log.warn("Failed to set cache with new value {}", error.getMessage());
-
-                                                                return Mono.empty();
-
-                                                            })
-                                                            .thenReturn(ApiResponse.success("Job role retrieved successfully", jobRoleResponse));
-
-                                                })
-                                                .switchIfEmpty(Mono.just(ApiResponse.error("Department not found")))
-                                )
-                                .switchIfEmpty(Mono.just(ApiResponse.error("Job role not found")))
+                                    return reactiveRedisOperations
+                                            .opsForValue()
+                                            .set(cacheKey, jobRoleResponse, CACHE_TTL)
+                                            .doOnError(redisError -> log.warn("Failed to set cache with new value {}", redisError.getMessage()))
+                                            .then(Mono.just(ApiResponse.success("Job role retrieved successfully", jobRoleResponse)))
+                                            .onErrorReturn(ApiResponse.success("Job role retrieved successfully", jobRoleResponse));
+                                })
+                                .switchIfEmpty(Mono.just(ApiResponse.error("Department not found")))
+                        )
+                        .switchIfEmpty(Mono.just(ApiResponse.error("Job role not found")))
                 )
                 .onErrorResume(error -> {
 
                     log.error("Error fetching job role {}: {}", id, error.getMessage(), error);
 
-                    return Mono.just(ApiResponse.error("Failed to fetch a job role: " + error.getMessage()));
+                    return Mono.just(ApiResponse.error("Failed to fetch a job role."));
 
                 });
     }
-
 
     @Override
     public Mono<ApiResponse<String>> updateAJobRole(String id, Mono<UpdateJobRoleRequest> updateJobRoleRequestMono) {
@@ -247,74 +221,55 @@ public class JobRoleServiceImplementation implements JobRoleService {
 
         return updateJobRoleRequestMono
                 .flatMap(updateJobRoleRequest -> jobRoleRepository.findById(id)
-                        .flatMap(jobRole -> departmentRepository.findByDepartmentNameIgnoreCase(updateJobRoleRequest.getDepartmentName())
-                                .flatMap(department -> jobRoleRepository.existsByJobPositionIgnoreCaseAndDepartmentId(updateJobRoleRequest.getJobPosition(), department.getId())
-                                        .flatMap(duplicateExists -> {
+                                .flatMap(jobRole -> departmentRepository.findByDepartmentNameIgnoreCase(updateJobRoleRequest.getDepartmentName())
+                                                .flatMap(department -> jobRoleRepository.existsByJobPositionIgnoreCaseAndDepartmentIdAndIdNot(
+                                                                updateJobRoleRequest.getJobPosition(),
+                                                                        department.getId(),
+                                                                        id
+                                                                )
+                                                                .flatMap(duplicateExists -> {
 
-                                            if (duplicateExists)
-                                                return Mono.just(ApiResponse.<String>error("Job position already exists in given department"));
+                                                                    if (duplicateExists)
+                                                                        return Mono.just(ApiResponse.<String>error("Job position already exists in given department"));
 
-                                            jobRole.setJobPosition(updateJobRoleRequest.getJobPosition());
+                                                                    jobRole.setJobPosition(updateJobRoleRequest.getJobPosition());
 
-                                            jobRole.setJobDescription(updateJobRoleRequest.getJobDescription());
+                                                                    jobRole.setJobDescription(updateJobRoleRequest.getJobDescription());
 
-                                            jobRole.setDepartmentId(department.getId());
+                                                                    jobRole.setDepartmentId(department.getId());
 
-                                            jobRole.setDateUpdated(LocalDateTime.now());
+                                                                    jobRole.setDateUpdated(LocalDateTime.now());
 
-                                            return jobRoleRepository.save(jobRole)
-                                                    .flatMap(updatedJobRole -> reactiveRedisOperations
-                                                            .delete(cacheKey)
-                                                            .then(Mono.defer(() -> {
+                                                                    return jobRoleRepository.save(jobRole)
+                                                                            .flatMap(updatedJobRole -> {
 
-                                                                JobRoleResponse jobRoleResponse = new JobRoleResponse();
+                                                                                JobRoleResponse jobRoleResponse = new JobRoleResponse();
 
-                                                                jobRoleResponse.setId(updatedJobRole.getId());
+                                                                                jobRoleResponse.setId(updatedJobRole.getId());
 
-                                                                jobRoleResponse.setJobPosition(updatedJobRole.getJobPosition());
+                                                                                jobRoleResponse.setJobPosition(updatedJobRole.getJobPosition());
 
-                                                                jobRoleResponse.setJobDescription(updatedJobRole.getJobDescription());
+                                                                                jobRoleResponse.setJobDescription(updatedJobRole.getJobDescription());
 
-                                                                jobRoleResponse.setDepartmentName(department.getDepartmentName());
+                                                                                jobRoleResponse.setDepartmentName(department.getDepartmentName());
 
-                                                                return reactiveRedisOperations.opsForValue()
-                                                                        .set(cacheKey, jobRoleResponse, CACHE_TTL)
-                                                                        .then(reactiveRedisOperations
-                                                                                .delete(CACHE_KEY_ALL_JOB_ROLES)
-                                                                                .onErrorResume(err -> {
-
-                                                                                    log.warn("Failed to invalidate global cache after creation: {}", err.getMessage());
-
-                                                                                    return Mono.empty();
-                                                                                })
-                                                                                .thenReturn(ApiResponse.<String>success("Job role updated successfully"))
-
-                                                                        )
-                                                                        .onErrorResume(error -> {
-
-                                                                            log.warn("Failed to update cache for job role {}: {}", updatedJobRole.getId(), error.getMessage());
-
-                                                                            return Mono.empty();
-                                                                        })
-                                                                        .thenReturn(ApiResponse.<String>success("Job role updated successfully"));
-                                                            }))
-                                                            .onErrorResume(error -> {
-
-                                                                log.warn("Could not delete from cache");
-
-                                                                return Mono.empty();
-                                                            })
-                                                            .thenReturn(ApiResponse.<String>success("Job role updated successfully"))
-
-                                                    );
-                                        })
+                                                                                return reactiveRedisOperations.delete(cacheKey)
+                                                                                        .then(reactiveRedisOperations.opsForValue().set(cacheKey, jobRoleResponse, CACHE_TTL))
+                                                                                        .then(reactiveRedisOperations.delete(CACHE_KEY_ALL_JOB_ROLES))
+                                                                                        .doOnError(redisError -> log.warn("Failed to update cache for job role {}: {}", updatedJobRole.getId(), redisError.getMessage()))
+                                                                                        .then(Mono.just(ApiResponse.<String>success("Job role updated successfully")))
+                                                                                        .onErrorReturn(ApiResponse.success("Job role updated successfully"));
+                                                                            });
+                                                                })
+                                                )
+                                                .switchIfEmpty(Mono.just(ApiResponse.error("Department not found by given name")))
                                 )
-                                .switchIfEmpty(Mono.just(ApiResponse.error("Department not found by given name")))
-                        )
-                        .switchIfEmpty(Mono.just(ApiResponse.error("Job role not found by given identifier")))
+                                .switchIfEmpty(Mono.just(ApiResponse.error("Job role not found by given identifier")))
 
-                ).onErrorResume(error -> Mono.just(ApiResponse.error("Failed to update job role")));
+                )
+                .onErrorResume(error -> Mono.just(ApiResponse.error("Failed to update job role")));
     }
+
 
     @Override
     public Mono<ApiResponse<String>> deleteJobRole(String id) {
@@ -324,38 +279,19 @@ public class JobRoleServiceImplementation implements JobRoleService {
         return jobRoleRepository.findById(id)
                 .flatMap(jobRole -> jobRoleRepository
                         .delete(jobRole)
-                        .then(
-                                reactiveRedisOperations.delete(cacheKey)
-                                        .then(reactiveRedisOperations
-                                                .delete(CACHE_KEY_ALL_JOB_ROLES)
-                                                .onErrorResume(err -> {
-
-                                                    log.warn("Failed to invalidate global cache after creation: {}", err.getMessage());
-
-                                                    return Mono.empty();
-                                                })
-                                                .thenReturn(ApiResponse.<String>success("Job role deleted successfully"))
-
-                                        )
-                                        .onErrorResume(error -> {
-
-                                            log.warn("Failed to delete cache with cache key {} ", cacheKey);
-
-                                            return Mono.empty();
-                                        })
-                                        .thenReturn(ApiResponse.<String>success("Job role deleted successfully"))
-
-                        )
+                        .then(reactiveRedisOperations.delete(cacheKey))
+                        .then(reactiveRedisOperations.delete(CACHE_KEY_ALL_JOB_ROLES))
+                        .doOnError(redisError -> log.warn("Failed to invalidate global cache after creation: {}", redisError.getMessage()))
+                        .then(Mono.just(ApiResponse.<String>success("Job role deleted successfully")))
+                        .onErrorReturn(ApiResponse.<String>success("Job role deleted successfully"))
                 )
                 .switchIfEmpty(Mono.just(ApiResponse.error("Job role not found")))
                 .onErrorResume(error -> {
 
                     log.error("Error deleting job role {}: {}", id, error.getMessage());
 
-                    return Mono.just(ApiResponse.error("Failed to delete job role: " + error.getMessage()));
+                    return Mono.just(ApiResponse.error("Failed to delete job role"));
 
                 });
-
     }
-
 }

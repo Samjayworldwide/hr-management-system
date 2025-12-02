@@ -13,4 +13,6 @@ public interface DepartmentRepository extends R2dbcRepository<Department, String
 
     Mono<Boolean> existsByDepartmentNameIgnoreCase(String departName);
 
+    Mono<Boolean> existsByDepartmentNameIgnoreCaseAndIdNot(String departName, String id);
+
 }

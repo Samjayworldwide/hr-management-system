@@ -53,7 +53,5 @@ public class GlobalErrorHandler extends AbstractErrorWebExceptionHandler {
                 .status(HttpStatus.valueOf(status))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(apiResponse);
-
     }
-
 }

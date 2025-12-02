@@ -2,6 +2,9 @@
 -- DROP TABLE IF EXISTS employees;
 -- DROP TABLE IF EXISTS departments;
 
+-- DROP TABLE IF EXISTS payroll_records;
+-- DROP TABLE IF EXISTS payroll_runs;
+
 CREATE TABLE IF NOT EXISTS departments
 (
     id CHAR(36) PRIMARY KEY,
@@ -53,13 +56,70 @@ CREATE TABLE IF NOT EXISTS employees
     gender VARCHAR(255),
     marital_status VARCHAR(255),
     work_type VARCHAR(255) NOT NULL,
+    wallet_balance DOUBLE PRECISION DEFAULT 0.0,
     employment_status VARCHAR(255) NOT NULL DEFAULT 'ACTIVE',
     profile_completion DOUBLE PRECISION,
+    number_of_leave_days_left INT,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_employee_department
     FOREIGN KEY (department_id)
     REFERENCES departments(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS leaveRequests
+(
+    id CHAR(36) PRIMARY KEY,
+    employee_email_address VARCHAR(255) NOT NULL,
+    number_of_leave_days INT NOT NULL,
+    employee_id CHAR(36) NOT NULL,
+    leave_type VARCHAR(255) NOT NULL,
+    approved_date DATE,
+    expected_return_date DATE,
+    is_active BIT DEFAULT false,
+    is_approved BIT DEFAULT false,
+    approved_by VARCHAR(255),
+    grant_leave_authority VARCHAR(255) NOT NULL,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_updated TIMESTAMP,
+    CONSTRAINT fk_employee_leaveRequest
+    FOREIGN KEY (employee_id)
+    REFERENCES employees(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS payroll_runs
+(
+    id CHAR(36) PRIMARY KEY,
+    run_date VARCHAR(255) NOT NULL,
+    payroll_run_status VARCHAR(255) NOT NULL,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_updated TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payroll_records
+(
+    id CHAR(36) PRIMARY KEY,
+    employee_id CHAR(36) NOT NULL,
+    payroll_run_id CHAR(36) NOT NULL,
+    gross_pay DOUBLE PRECISION NOT NULL,
+    deductions DOUBLE PRECISION NOT NULL,
+    net_pay DOUBLE PRECISION NOT NULL,
+    payroll_period VARCHAR(255) NOT NULL,
+    payroll_record_status VARCHAR(255) NOT NULL,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_updated TIMESTAMP,
+    CONSTRAINT fk_payroll_employee
+    FOREIGN KEY (employee_id)
+    REFERENCES employees(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+    CONSTRAINT fk_payroll_run
+    FOREIGN KEY (payroll_run_id)
+    REFERENCES payroll_runs(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE
 );
@@ -106,7 +166,7 @@ SELECT
     'HR',
     NULL,
     'Lagos',
-    1,
+    0,
     CURRENT_DATE,
     NULL
     WHERE NOT EXISTS
@@ -120,7 +180,8 @@ INSERT INTO employees
     personal_email_address, password, address, city, state, country,
     work_email_address, job_position, created_by,
     date_of_birth, hire_date, salary,
-    department_id, role, gender, marital_status, work_type, employment_status, profile_completion
+    department_id, role, gender, marital_status, work_type, employment_status, profile_completion,
+    number_of_leave_days_left
 )
 SELECT
     '00000000-0000-0000-0000-000000000001',
@@ -146,6 +207,7 @@ SELECT
     'SINGLE',
     'ONSITE',
     'ACTIVE',
+    NULL,
     NULL
     WHERE NOT EXISTS
 (

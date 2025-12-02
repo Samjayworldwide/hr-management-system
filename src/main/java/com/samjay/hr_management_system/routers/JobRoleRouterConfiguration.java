@@ -75,7 +75,6 @@ public class JobRoleRouterConfiguration {
                 .route()
                 .POST("/create-a-job-role", jobRoleHandler::createJobRoleHandler)
                 .build();
-
     }
 
     @Bean
@@ -119,7 +118,6 @@ public class JobRoleRouterConfiguration {
                 .route()
                 .GET("/get-all-job-roles", jobRoleHandler::fetchAllJobRolesHandler)
                 .build();
-
     }
 
     @Bean
@@ -165,7 +163,6 @@ public class JobRoleRouterConfiguration {
                 .route()
                 .GET("/get-job-role-by-id/{jobRoleId}", jobRoleHandler::fetchAJobRoleByIdHandler)
                 .build();
-
     }
 
     @Bean
@@ -218,14 +215,13 @@ public class JobRoleRouterConfiguration {
                 .route()
                 .PUT("/update-a-job-role/{jobRoleId}", jobRoleHandler::updateJobRoleHandler)
                 .build();
-
     }
 
     @Bean
     @RouterOperations(
             {
                     @RouterOperation(
-                            path = "/delete-a-job-role{jobRoleId}",
+                            path = "/delete-a-job-role/{jobRoleId}",
                             produces = {MediaType.APPLICATION_JSON_VALUE},
                             method = RequestMethod.DELETE,
                             beanClass = JobRoleHandler.class,
@@ -262,8 +258,7 @@ public class JobRoleRouterConfiguration {
 
         return RouterFunctions
                 .route()
-                .DELETE("/delete-a-job-role{jobRoleId}", jobRoleHandler::deleteJobRoleHandler)
+                .DELETE("/delete-a-job-role/{jobRoleId}", jobRoleHandler::deleteJobRoleHandler)
                 .build();
-
     }
 }

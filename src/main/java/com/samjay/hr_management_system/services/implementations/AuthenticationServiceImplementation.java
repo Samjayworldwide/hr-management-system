@@ -4,6 +4,7 @@ import com.samjay.hr_management_system.dtos.request.LoginRequest;
 import com.samjay.hr_management_system.dtos.request.PasswordChangeRequest;
 import com.samjay.hr_management_system.dtos.response.ApiResponse;
 import com.samjay.hr_management_system.dtos.response.LoginResponse;
+import com.samjay.hr_management_system.enumerations.EmploymentStatus;
 import com.samjay.hr_management_system.repositories.EmployeeRepository;
 import com.samjay.hr_management_system.security.JWTUtil;
 import com.samjay.hr_management_system.services.AuthenticationService;
@@ -35,6 +36,9 @@ public class AuthenticationServiceImplementation implements AuthenticationServic
                 employeeRepository.findByWorkEmailAddressIgnoreCase(loginRequest.getWorkEmailAddress().trim())
                         .flatMap(employee -> {
 
+                            if (employee.getEmploymentStatus() == EmploymentStatus.TERMINATED)
+                                return Mono.just(ApiResponse.<LoginResponse>error("You are unauthorized to login because your employment has been terminated"));
+
                             if (!passwordEncoder.matches(loginRequest.getPassword(), employee.getPassword()))
                                 return Mono.just(ApiResponse.<LoginResponse>error("Invalid email or password"));
 
@@ -52,12 +56,11 @@ public class AuthenticationServiceImplementation implements AuthenticationServic
                                         return ApiResponse.success("Login successful", loginResponse);
 
                                     });
-
                         })
                         .switchIfEmpty(Mono.just(ApiResponse.error("Invalid email or password")))
                         .onErrorResume(error -> {
 
-                            log.error("An unexpected error occurred logging in " + error.getMessage());
+                            log.error("An unexpected error occurred logging in {}", error.getMessage());
 
                             return Mono.just(ApiResponse.error("Login failed"));
 

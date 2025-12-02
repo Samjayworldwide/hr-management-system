@@ -12,6 +12,8 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDate;
 
+import static com.samjay.hr_management_system.constants.Constant.MAX_NUMBER_OF_DAYS_FOR_LEAVE_IN_A_YEAR;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -86,11 +88,17 @@ public class Employee extends BaseEntity implements Persistable<String> {
     @Column(value = "work_type")
     private WorkType workType;
 
+    @Column(value = "wallet_balance")
+    private double walletBalance = 0.0;
+
     @Column(value = "employment_status")
     private EmploymentStatus employmentStatus = EmploymentStatus.ACTIVE;
 
     @Column(value = "profile_completion")
     private double profileCompletion;
+
+    @Column(value = "number_of_leave_days_left")
+    private int numberOfLeaveDaysLeft = MAX_NUMBER_OF_DAYS_FOR_LEAVE_IN_A_YEAR;
 
     @Override
     public boolean isNew() {

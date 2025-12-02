@@ -5,6 +5,8 @@ import com.samjay.hr_management_system.dtos.request.CreateEmployeeRequest;
 import com.samjay.hr_management_system.dtos.request.CreateHrRequest;
 import com.samjay.hr_management_system.handlers.EmployeeHandler;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -74,7 +76,6 @@ public class EmployeeRouterConfiguration {
                 .route()
                 .POST("/create-an-employee", employeeHandler::createEmployeeHandler)
                 .build();
-
     }
 
     @Bean
@@ -212,11 +213,185 @@ public class EmployeeRouterConfiguration {
                     )
             }
     )
-    public RouterFunction<ServerResponse> getProfileCompletionProgress() {
+    public RouterFunction<ServerResponse> getProfileCompletionProgressRouterFunction() {
 
         return RouterFunctions
                 .route()
                 .GET("/get-profile-completion-progress", employeeHandler::getProfileCompletionProgressHandler)
+                .build();
+    }
+
+    @Bean
+    @RouterOperations(
+            {
+                    @RouterOperation(
+                            path = "/search-employee-by-work-email/{workEmailAddress}",
+                            produces = {MediaType.APPLICATION_JSON_VALUE},
+                            method = RequestMethod.GET,
+                            beanClass = EmployeeHandler.class,
+                            beanMethod = "searchEmployeeByWorkEmailAddressHandler",
+                            operation = @Operation(
+                                    operationId = "searchEmployeeByWorkEmailAddressHandler",
+                                    responses = {
+                                            @ApiResponse(
+                                                    responseCode = "200",
+                                                    description = "Successful operation",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            ),
+                                            @ApiResponse(
+                                                    responseCode = "400",
+                                                    description = "Bad request",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            )
+                                    },
+                                    parameters = @Parameter(in = ParameterIn.PATH, name = "workEmailAddress")
+                            )
+                    )
+            }
+    )
+    public RouterFunction<ServerResponse> searchEmployeeByWorkEmailAddressRouterFunction() {
+
+        return RouterFunctions
+                .route()
+                .GET("/search-employee-by-work-email/{workEmailAddress}", employeeHandler::searchEmployeeByWorkEmailAddressHandler)
+                .build();
+    }
+
+    @Bean
+    @RouterOperations(
+            {
+                    @RouterOperation(
+                            path = "/get-employee-profile",
+                            produces = {MediaType.APPLICATION_JSON_VALUE},
+                            method = RequestMethod.GET,
+                            beanClass = EmployeeHandler.class,
+                            beanMethod = "getEmployeeProfileHandler",
+                            operation = @Operation(
+                                    operationId = "getEmployeeProfileHandler",
+                                    responses = {
+                                            @ApiResponse(
+                                                    responseCode = "200",
+                                                    description = "Successful operation",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            ),
+                                            @ApiResponse(
+                                                    responseCode = "400",
+                                                    description = "Bad request",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            )
+                                    }
+                            )
+                    )
+            }
+    )
+    public RouterFunction<ServerResponse> getEmployeeProfileRouterFunction() {
+
+        return RouterFunctions
+                .route()
+                .GET("/get-employee-profile", employeeHandler::getEmployeeProfileHandler)
+                .build();
+    }
+
+    @Bean
+    @RouterOperations(
+            {
+                    @RouterOperation(
+                            path = "/fetch-all-employees",
+                            produces = {MediaType.APPLICATION_JSON_VALUE},
+                            method = RequestMethod.GET,
+                            beanClass = EmployeeHandler.class,
+                            beanMethod = "fetchAllEmployeesHandler",
+                            operation = @Operation(
+                                    operationId = "fetchAllEmployeesHandler",
+                                    responses = {
+                                            @ApiResponse(
+                                                    responseCode = "200",
+                                                    description = "Successful operation",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            ),
+                                            @ApiResponse(
+                                                    responseCode = "400",
+                                                    description = "Bad request",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            )
+                                    }
+                            )
+                    )
+            }
+    )
+    public RouterFunction<ServerResponse> fetchAllEmployeesRouterFunction() {
+
+        return RouterFunctions
+                .route()
+                .GET("/fetch-all-employees", employeeHandler::fetchAllEmployeesHandler)
+                .build();
+    }
+
+    @Bean
+    @RouterOperations(
+            {
+                    @RouterOperation(
+                            path = "/terminate-employee",
+                            produces = {MediaType.APPLICATION_JSON_VALUE},
+                            method = RequestMethod.POST,
+                            beanClass = EmployeeHandler.class,
+                            beanMethod = "terminateEmployeeHandler",
+                            operation = @Operation(
+                                    operationId = "terminateEmployeeHandler",
+                                    responses = {
+                                            @ApiResponse(
+                                                    responseCode = "200",
+                                                    description = "Successful operation",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            ),
+                                            @ApiResponse(
+                                                    responseCode = "400",
+                                                    description = "Bad request",
+                                                    content = @Content(
+                                                            schema = @Schema(
+                                                                    implementation = com.samjay.hr_management_system.dtos.response.ApiResponse.class
+                                                            )
+                                                    )
+                                            )
+                                    },
+                                    parameters = @Parameter(in = ParameterIn.QUERY, name = "employeeId")
+                            )
+                    )
+            }
+    )
+    public RouterFunction<ServerResponse> terminateEmployeeRouterFunction() {
+
+        return RouterFunctions
+                .route()
+                .POST("/terminate-employee", employeeHandler::terminateEmployeeHandler)
                 .build();
     }
 }

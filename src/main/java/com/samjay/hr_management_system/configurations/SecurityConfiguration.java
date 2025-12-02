@@ -37,17 +37,31 @@ public class SecurityConfiguration {
                                 "/swagger-doc/**",
                                 "/webjars/**")
                         .permitAll()
-                        .pathMatchers("/create-an-employee").hasAnyAuthority("ADMIN_ROLE", "HR_ROLE")
+                        .pathMatchers("/create-an-employee",
+                                "/approve-leave-request",
+                                "/search-employee-by-work-email/{workEmailAddress}",
+                                "/fetch-all-employees",
+                                "/terminate-employee",
+                                "/get-a-department-and-its-job-roles/{departmentId}",
+                                "/payroll-records/{payrollPeriod}",
+                                "/get-all-leave-requests",
+                                "/get-all-employees-currently-on-leave").hasAnyAuthority("ADMIN_ROLE", "HR_ROLE")
                         .pathMatchers("/complete-profile-information",
                                 "/get-profile-completion-progress",
-                                "/change-login-password").hasAnyAuthority("HR_ROLE", "EMPLOYEE_ROLE")
+                                "/change-login-password",
+                                "/submit-leave-request",
+                                "/employee-/payroll-record/{payrollPeriod}").hasAnyAuthority("HR_ROLE", "EMPLOYEE_ROLE")
                         .pathMatchers("/create-a-job-role",
                                 "/create-an-hr",
                                 "/create-a-department",
                                 "/get-all-job-roles",
                                 "/get-job-role-by-id/{jobRoleId}",
                                 "/update-a-job-role/{jobRoleId}",
-                                "/delete-a-job-role{jobRoleId}").hasAuthority("ADMIN_ROLE"))
+                                "/delete-a-job-role/{jobRoleId}",
+                                "/update-department/{departmentId}",
+                                "/delete-department").hasAuthority("ADMIN_ROLE")
+                        .anyExchange().authenticated()
+                )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((exchange, authEx) -> {
 

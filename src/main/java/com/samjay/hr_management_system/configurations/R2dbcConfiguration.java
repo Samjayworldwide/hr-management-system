@@ -25,9 +25,16 @@ public class R2dbcConfiguration {
                 new GenericEnumReadConverter<>(Role.class),
                 new GenericEnumWriteConverter<Role>(),
                 new GenericEnumReadConverter<>(WorkType.class),
-                new GenericEnumWriteConverter<WorkType>()
+                new GenericEnumWriteConverter<WorkType>(),
+                new GenericEnumReadConverter<>(LeaveType.class),
+                new GenericEnumWriteConverter<LeaveType>(),
+                new GenericEnumReadConverter<>(PayrollRecordStatus.class),
+                new GenericEnumWriteConverter<PayrollRecordStatus>(),
+                new GenericEnumReadConverter<>(PayrollRunStatus.class),
+                new GenericEnumWriteConverter<PayrollRunStatus>()
         );
 
         return new R2dbcCustomConversions(CustomConversions.StoreConversions.NONE, converters);
+
     }
 }
