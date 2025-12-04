@@ -23,9 +23,9 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 import static com.samjay.hr_management_system.constants.Constant.MAX_NUMBER_OF_DAYS_FOR_LEAVE_IN_A_YEAR;
+import static com.samjay.hr_management_system.utils.Utility.mapToLeaveRequestFromCreateLeaveRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -73,19 +73,7 @@ public class LeaveRequestServiceImplementation implements LeaveRequestService {
                                             if (leaveExists)
                                                 return Mono.just(ApiResponse.<String>error("You already have an active leave request"));
 
-                                            LeaveRequest leaveRequest = new LeaveRequest();
-
-                                            leaveRequest.setId(UUID.randomUUID().toString());
-
-                                            leaveRequest.setNumberOfLeaveDays(createLeaveRequest.getNumberOfLeaveDays());
-
-                                            leaveRequest.setLeaveType(createLeaveRequest.getLeaveType());
-
-                                            leaveRequest.setEmployeeId(employee.getId());
-
-                                            leaveRequest.setEmployeeEmailAddress(workEmailAddress);
-
-                                            leaveRequest.setGrantLeaveAuthority(grantLeaveAuthority);
+                                            LeaveRequest leaveRequest = mapToLeaveRequestFromCreateLeaveRequest(createLeaveRequest, employee, workEmailAddress, grantLeaveAuthority);
 
                                             return leaveRequestRepository.save(leaveRequest)
                                                     .thenReturn(ApiResponse.<String>success("Leave request has been created successfully, you will be informed on the outcome of your request"));
@@ -181,27 +169,7 @@ public class LeaveRequestServiceImplementation implements LeaveRequestService {
     public Mono<ApiResponse<List<LeaveResponse>>> getAllUnapprovedLeaveRequests() {
 
         return leaveRequestRepository.findAllByIsApproved(false)
-                .map(leaveRequest -> {
-
-                    LeaveResponse leaveResponse = new LeaveResponse();
-
-                    leaveResponse.setId(leaveRequest.getId());
-
-                    leaveResponse.setEmployeeId(leaveRequest.getEmployeeId());
-
-                    leaveResponse.setEmployeeEmailAddress(leaveRequest.getEmployeeEmailAddress());
-
-                    leaveResponse.setNumberOfLeaveDays(leaveRequest.getNumberOfLeaveDays());
-
-                    leaveResponse.setLeaveType(leaveRequest.getLeaveType());
-
-                    leaveResponse.setGrantLeaveAuthority(leaveRequest.getGrantLeaveAuthority());
-
-                    leaveResponse.setDateCreated(leaveRequest.getDateCreated());
-
-                    return leaveResponse;
-
-                })
+                .map(Utility::mapToLeaveResponseFromLeaveRequest)
                 .collectList()
                 .map(leaveResponses -> {
 
@@ -224,27 +192,7 @@ public class LeaveRequestServiceImplementation implements LeaveRequestService {
     public Mono<ApiResponse<List<ActiveLeaveResponse>>> getAllEmployeesCurrentlyOnLeave() {
 
         return leaveRequestRepository.findAllByIsActive(true)
-                .map(leaveRequest -> {
-
-                    ActiveLeaveResponse activeLeaveResponse = new ActiveLeaveResponse();
-
-                    activeLeaveResponse.setEmployeeId(leaveRequest.getEmployeeId());
-
-                    activeLeaveResponse.setEmployeeEmailAddress(leaveRequest.getEmployeeEmailAddress());
-
-                    activeLeaveResponse.setNumberOfLeaveDays(leaveRequest.getNumberOfLeaveDays());
-
-                    activeLeaveResponse.setLeaveType(leaveRequest.getLeaveType());
-
-                    activeLeaveResponse.setGrantLeaveAuthority(leaveRequest.getGrantLeaveAuthority());
-
-                    activeLeaveResponse.setApprovedDate(leaveRequest.getApprovedDate());
-
-                    activeLeaveResponse.setExpectedReturnDate(leaveRequest.getExpectedReturnDate());
-
-                    return activeLeaveResponse;
-
-                })
+                .map(Utility::mapToActiveLeaveResponseFromEmployeeAndLeaveRequest)
                 .collectList()
                 .map(leaveResponses -> {
 

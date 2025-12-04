@@ -5,13 +5,11 @@ import com.samjay.hr_management_system.dtos.request.*;
 import com.samjay.hr_management_system.dtos.response.EmployeeProfileResponse;
 import com.samjay.hr_management_system.dtos.response.EmployeeResponse;
 import com.samjay.hr_management_system.enumerations.EmploymentStatus;
-import com.samjay.hr_management_system.enumerations.WorkType;
 import com.samjay.hr_management_system.globalexception.ApplicationException;
 import com.samjay.hr_management_system.publishers.EmailPublisher;
 import com.samjay.hr_management_system.utils.Utility;
 import com.samjay.hr_management_system.dtos.response.ApiResponse;
 import com.samjay.hr_management_system.entities.Employee;
-import com.samjay.hr_management_system.enumerations.Role;
 import com.samjay.hr_management_system.repositories.DepartmentRepository;
 import com.samjay.hr_management_system.repositories.EmployeeRepository;
 import com.samjay.hr_management_system.repositories.JobRoleRepository;
@@ -30,10 +28,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
-import java.util.UUID;
 
 import static com.samjay.hr_management_system.constants.Constant.*;
-import static com.samjay.hr_management_system.utils.Utility.generateDefaultPassword;
+import static com.samjay.hr_management_system.utils.Utility.*;
 
 @Service
 @RequiredArgsConstructor
@@ -99,41 +96,9 @@ public class EmployeeServiceImplementation implements EmployeeService {
 
                                                                             String email = securityContext.getAuthentication().getName();
 
-                                                                            Employee employee = new Employee();
+                                                                            String hashedPassword = passwordEncoder.encode(defaultPassword);
 
-                                                                            employee.setId(UUID.randomUUID().toString());
-
-                                                                            employee.setFirstname(createEmployeeRequest.getFirstname().trim());
-
-                                                                            employee.setMiddleName(createEmployeeRequest.getMiddleName().trim());
-
-                                                                            employee.setLastname(createEmployeeRequest.getLastname().trim());
-
-                                                                            employee.setFullName(createEmployeeRequest.getFirstname().trim() + " " + createEmployeeRequest.getMiddleName().trim() + " " + createEmployeeRequest.getLastname().trim());
-
-                                                                            employee.setPersonalEmailAddress(createEmployeeRequest.getPersonalEmailAddress().trim());
-
-                                                                            employee.setWorkEmailAddress(workEmailAddress.trim());
-
-                                                                            employee.setWorkType(createEmployeeRequest.getWorkType());
-
-                                                                            employee.setPassword(passwordEncoder.encode(defaultPassword));
-
-                                                                            employee.setJobPosition(createEmployeeRequest.getJobPosition());
-
-                                                                            employee.setSalary(createEmployeeRequest.getSalary());
-
-                                                                            employee.setHireDate(createEmployeeRequest.getHireDate());
-
-                                                                            employee.setRole(Role.EMPLOYEE_ROLE);
-
-                                                                            employee.setDepartmentId(department.getId());
-
-                                                                            employee.setCreatedBy(email);
-
-                                                                            double profileCompletion = Utility.calculateCompletion(employee);
-
-                                                                            employee.setProfileCompletion(profileCompletion);
+                                                                            Employee employee = mapToEmployeeFromCreateEmployeeRequest(createEmployeeRequest, workEmailAddress, hashedPassword, email, department);
 
                                                                             Long currentNumberOfEmployees = department.getNumberOfEmployees();
 
@@ -200,41 +165,9 @@ public class EmployeeServiceImplementation implements EmployeeService {
 
                                                                             String defaultPassword = generateDefaultPassword();
 
-                                                                            Employee employee = new Employee();
+                                                                            String hashedPassword = passwordEncoder.encode(defaultPassword);
 
-                                                                            employee.setId(UUID.randomUUID().toString());
-
-                                                                            employee.setFirstname(createHrRequest.getFirstname());
-
-                                                                            employee.setMiddleName(createHrRequest.getMiddleName());
-
-                                                                            employee.setLastname(createHrRequest.getLastname());
-
-                                                                            employee.setPassword(passwordEncoder.encode(defaultPassword));
-
-                                                                            employee.setFullName(createHrRequest.getFirstname() + " " + createHrRequest.getMiddleName() + " " + createHrRequest.getLastname());
-
-                                                                            employee.setPersonalEmailAddress(createHrRequest.getPersonalEmailAddress());
-
-                                                                            employee.setJobPosition(createHrRequest.getJobPosition());
-
-                                                                            employee.setWorkEmailAddress(workEmailAddress);
-
-                                                                            employee.setDepartmentId(department.getId());
-
-                                                                            employee.setSalary(createHrRequest.getSalary());
-
-                                                                            employee.setHireDate(createHrRequest.getHireDate());
-
-                                                                            employee.setWorkType(WorkType.ONSITE);
-
-                                                                            employee.setCreatedBy(email);
-
-                                                                            employee.setRole(Role.HR_ROLE);
-
-                                                                            double profileCompletion = Utility.calculateCompletion(employee);
-
-                                                                            employee.setProfileCompletion(profileCompletion);
+                                                                            Employee employee = mapToEmployeeFromCreateHrRequest(createHrRequest, hashedPassword, workEmailAddress, email, department);
 
                                                                             Long currentNumberOfEmployees = department.getNumberOfEmployees();
 
@@ -296,23 +229,7 @@ public class EmployeeServiceImplementation implements EmployeeService {
                                                 if (age.getYears() < 18)
                                                     return Mono.just(ApiResponse.<String>error("You should be atleast 18 years old"));
 
-                                                employee.setAddress(completeProfileRequest.getAddress());
-
-                                                employee.setCity(completeProfileRequest.getCity());
-
-                                                employee.setState(completeProfileRequest.getState());
-
-                                                employee.setCountry(completeProfileRequest.getCountry());
-
-                                                employee.setDateOfBirth(completeProfileRequest.getDateOfBirth());
-
-                                                employee.setGender(completeProfileRequest.getGender());
-
-                                                employee.setMaritalStatus(completeProfileRequest.getMaritalStatus());
-
-                                                double profileCompletion = Utility.calculateCompletion(employee);
-
-                                                employee.setProfileCompletion(profileCompletion);
+                                                setEmployeeFieldsWithCompleteProfileRequestData(employee, completeProfileRequest);
 
                                                 return employeeRepository
                                                         .save(employee)
@@ -357,35 +274,15 @@ public class EmployeeServiceImplementation implements EmployeeService {
     public Mono<ApiResponse<EmployeeResponse>> searchEmployeeByWorkEmailAddress(String workEmailAddress) {
 
         return employeeRepository.findByWorkEmailAddressIgnoreCase(workEmailAddress)
-                .map(employee -> {
+                .flatMap(employee -> departmentRepository.findById(employee.getDepartmentId())
+                        .map(department -> {
 
-                    EmployeeResponse employeeResponse = new EmployeeResponse();
+                            EmployeeResponse employeeResponse = mapToEmployeeResponseFromEmployee(employee, department);
 
-                    employeeResponse.setFirstname(employee.getFirstname());
-
-                    employeeResponse.setMiddleName(employee.getMiddleName());
-
-                    employeeResponse.setLastname(employee.getLastname());
-
-                    employeeResponse.setFullName(employee.getFullName());
-
-                    employeeResponse.setPersonalEmailAddress(employee.getPersonalEmailAddress());
-
-                    employeeResponse.setAddress(employee.getAddress());
-
-                    employeeResponse.setState(employee.getState());
-
-                    employeeResponse.setWorkEmailAddress(employee.getWorkEmailAddress());
-
-                    employeeResponse.setJobPosition(employee.getJobPosition());
-
-                    employeeResponse.setDateOfBirth(employee.getDateOfBirth());
-
-                    employeeResponse.setSalary(employee.getSalary());
-
-                    return ApiResponse.success("Employee retrieved successfully.", employeeResponse);
-
-                })
+                            return ApiResponse.success("Employee retrieved successfully.", employeeResponse);
+                        })
+                        .switchIfEmpty(Mono.just(ApiResponse.error("Department with given identifier not found")))
+                )
                 .switchIfEmpty(Mono.just(ApiResponse.error("Employee with given work email address not found")))
                 .onErrorResume(error -> {
 
@@ -431,39 +328,7 @@ public class EmployeeServiceImplementation implements EmployeeService {
                             .flatMap(employee -> departmentRepository.findById(employee.getDepartmentId())
                                     .flatMap(department -> {
 
-                                        EmployeeProfileResponse employeeProfileResponse = new EmployeeProfileResponse();
-
-                                        employeeProfileResponse.setFirstname(employee.getFirstname());
-
-                                        employeeProfileResponse.setMiddleName(employee.getMiddleName());
-
-                                        employeeProfileResponse.setLastname(employee.getLastname());
-
-                                        employeeProfileResponse.setFullName(employee.getFullName());
-
-                                        employeeProfileResponse.setPersonalEmailAddress(employee.getPersonalEmailAddress());
-
-                                        employeeProfileResponse.setAddress(employee.getAddress());
-
-                                        employeeProfileResponse.setState(employee.getState());
-
-                                        employeeProfileResponse.setWorkEmailAddress(employee.getWorkEmailAddress());
-
-                                        employeeProfileResponse.setJobPosition(employee.getJobPosition());
-
-                                        employeeProfileResponse.setDateOfBirth(employee.getDateOfBirth());
-
-                                        employeeProfileResponse.setSalary(employee.getSalary());
-
-                                        employeeProfileResponse.setDepartmentName(department.getDepartmentName());
-
-                                        employeeProfileResponse.setGender(employee.getGender());
-
-                                        employeeProfileResponse.setMaritalStatus(employee.getMaritalStatus());
-
-                                        employeeProfileResponse.setWorkType(employee.getWorkType());
-
-                                        employeeProfileResponse.setWalletBalance(employee.getWalletBalance());
+                                        EmployeeProfileResponse employeeProfileResponse = mapToEmployeeProfileResponseFromEmployee(employee, department);
 
                                         return reactiveRedisOperations.opsForValue()
                                                 .set(cacheKey, employeeProfileResponse, CACHE_TTL)
@@ -495,12 +360,13 @@ public class EmployeeServiceImplementation implements EmployeeService {
 
                         log.info("Cache hit for all employees");
 
-                        @SuppressWarnings("unchecked")
                         List<EmployeeResponse> employeeResponses = (List<EmployeeResponse>) cachedList;
 
                         return Mono.just(ApiResponse.success("Employees retrieved successfully.", employeeResponses));
 
                     } else {
+
+                        log.info("Cache miss for all employees");
 
                         return Mono.empty();
 
@@ -515,42 +381,7 @@ public class EmployeeServiceImplementation implements EmployeeService {
                 })
                 .switchIfEmpty(employeeRepository.findAllByEmploymentStatusNot(EmploymentStatus.TERMINATED)
                         .flatMap(employee -> departmentRepository.findById(employee.getDepartmentId())
-                                .map(department -> {
-
-                                    EmployeeResponse employeeResponse = new EmployeeResponse();
-
-                                    employeeResponse.setFirstname(employee.getFirstname());
-
-                                    employeeResponse.setMiddleName(employee.getMiddleName());
-
-                                    employeeResponse.setLastname(employee.getLastname());
-
-                                    employeeResponse.setFullName(employee.getFullName());
-
-                                    employeeResponse.setPersonalEmailAddress(employee.getPersonalEmailAddress());
-
-                                    employeeResponse.setAddress(employee.getAddress());
-
-                                    employeeResponse.setState(employee.getState());
-
-                                    employeeResponse.setWorkEmailAddress(employee.getWorkEmailAddress());
-
-                                    employeeResponse.setJobPosition(employee.getJobPosition());
-
-                                    employeeResponse.setDateOfBirth(employee.getDateOfBirth());
-
-                                    employeeResponse.setSalary(employee.getSalary());
-
-                                    employeeResponse.setDepartmentName(department.getDepartmentName());
-
-                                    employeeResponse.setGender(employee.getGender());
-
-                                    employeeResponse.setMaritalStatus(employee.getMaritalStatus());
-
-                                    employeeResponse.setWorkType(employee.getWorkType());
-
-                                    return employeeResponse;
-                                })
+                                .map(department -> mapToEmployeeResponseFromEmployee(employee, department))
                                 .switchIfEmpty(Mono.error(new ApplicationException("Department not found with given")))
                         )
                         .collectList()

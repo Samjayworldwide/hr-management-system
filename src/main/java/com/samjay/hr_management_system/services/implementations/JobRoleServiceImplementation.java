@@ -18,9 +18,10 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 import static com.samjay.hr_management_system.constants.Constant.*;
+import static com.samjay.hr_management_system.utils.Utility.mapToJobRoleFromCreateJobRoleRequest;
+import static com.samjay.hr_management_system.utils.Utility.mapToJobRoleResponseFromJobRole;
 
 @Service
 @RequiredArgsConstructor
@@ -45,29 +46,13 @@ public class JobRoleServiceImplementation implements JobRoleService {
                                                     if (exists)
                                                         return Mono.just(ApiResponse.<String>error("A job position with same name already exists in this department"));
 
-                                                    JobRole jobRole = new JobRole();
-
-                                                    jobRole.setId(UUID.randomUUID().toString());
-
-                                                    jobRole.setJobPosition(createJobRoleRequest.getJobPosition().trim());
-
-                                                    jobRole.setJobDescription(createJobRoleRequest.getJobDescription().trim());
-
-                                                    jobRole.setDepartmentId(department.getId());
+                                                    JobRole jobRole = mapToJobRoleFromCreateJobRoleRequest(createJobRoleRequest, department);
 
                                                     return jobRoleRepository
                                                             .save(jobRole)
                                                             .flatMap(savedJobRole -> {
 
-                                                                JobRoleResponse jobRoleResponse = new JobRoleResponse();
-
-                                                                jobRoleResponse.setId(savedJobRole.getId());
-
-                                                                jobRoleResponse.setJobPosition(savedJobRole.getJobPosition());
-
-                                                                jobRoleResponse.setJobDescription(savedJobRole.getJobDescription());
-
-                                                                jobRoleResponse.setDepartmentName(department.getDepartmentName());
+                                                                JobRoleResponse jobRoleResponse = mapToJobRoleResponseFromJobRole(savedJobRole, department);
 
                                                                 String cacheKey = CACHE_KEY_JOB_ROLE_PREFIX + savedJobRole.getId();
 
@@ -98,7 +83,6 @@ public class JobRoleServiceImplementation implements JobRoleService {
 
                         log.info("Cache HIT for all job roles");
 
-                        @SuppressWarnings("unchecked")
                         List<JobRoleResponse> jobRoleResponses = (List<JobRoleResponse>) cachedList;
 
                         return Mono.just(ApiResponse.success("Job roles fetched successfully", jobRoleResponses));
@@ -115,21 +99,7 @@ public class JobRoleServiceImplementation implements JobRoleService {
                 }).switchIfEmpty(jobRoleRepository
                         .findAll()
                         .flatMap(jobRole -> departmentRepository.findById(jobRole.getDepartmentId())
-                                .map(department -> {
-
-                                    JobRoleResponse response = new JobRoleResponse();
-
-                                    response.setId(jobRole.getId());
-
-                                    response.setJobPosition(jobRole.getJobPosition());
-
-                                    response.setJobDescription(jobRole.getJobDescription());
-
-                                    response.setDepartmentName(department.getDepartmentName());
-
-                                    return response;
-
-                                })
+                                .map(department -> mapToJobRoleResponseFromJobRole(jobRole, department))
                                 .switchIfEmpty(Mono.error(new ApplicationException("Department not found with given")))
                         )
                         .collectList()
@@ -184,15 +154,7 @@ public class JobRoleServiceImplementation implements JobRoleService {
                         .flatMap(jobRole -> departmentRepository.findById(jobRole.getDepartmentId())
                                 .flatMap(department -> {
 
-                                    JobRoleResponse jobRoleResponse = new JobRoleResponse();
-
-                                    jobRoleResponse.setId(jobRole.getId());
-
-                                    jobRoleResponse.setJobPosition(jobRole.getJobPosition());
-
-                                    jobRoleResponse.setJobDescription(jobRole.getJobDescription());
-
-                                    jobRoleResponse.setDepartmentName(department.getDepartmentName());
+                                    JobRoleResponse jobRoleResponse = mapToJobRoleResponseFromJobRole(jobRole, department);
 
                                     return reactiveRedisOperations
                                             .opsForValue()
@@ -222,11 +184,7 @@ public class JobRoleServiceImplementation implements JobRoleService {
         return updateJobRoleRequestMono
                 .flatMap(updateJobRoleRequest -> jobRoleRepository.findById(id)
                                 .flatMap(jobRole -> departmentRepository.findByDepartmentNameIgnoreCase(updateJobRoleRequest.getDepartmentName())
-                                                .flatMap(department -> jobRoleRepository.existsByJobPositionIgnoreCaseAndDepartmentIdAndIdNot(
-                                                                updateJobRoleRequest.getJobPosition(),
-                                                                        department.getId(),
-                                                                        id
-                                                                )
+                                                .flatMap(department -> jobRoleRepository.existsByJobPositionIgnoreCaseAndDepartmentIdAndIdNot(updateJobRoleRequest.getJobPosition(), department.getId(), id)
                                                                 .flatMap(duplicateExists -> {
 
                                                                     if (duplicateExists)
@@ -243,15 +201,7 @@ public class JobRoleServiceImplementation implements JobRoleService {
                                                                     return jobRoleRepository.save(jobRole)
                                                                             .flatMap(updatedJobRole -> {
 
-                                                                                JobRoleResponse jobRoleResponse = new JobRoleResponse();
-
-                                                                                jobRoleResponse.setId(updatedJobRole.getId());
-
-                                                                                jobRoleResponse.setJobPosition(updatedJobRole.getJobPosition());
-
-                                                                                jobRoleResponse.setJobDescription(updatedJobRole.getJobDescription());
-
-                                                                                jobRoleResponse.setDepartmentName(department.getDepartmentName());
+                                                                                JobRoleResponse jobRoleResponse = mapToJobRoleResponseFromJobRole(updatedJobRole, department);
 
                                                                                 return reactiveRedisOperations.delete(cacheKey)
                                                                                         .then(reactiveRedisOperations.opsForValue().set(cacheKey, jobRoleResponse, CACHE_TTL))

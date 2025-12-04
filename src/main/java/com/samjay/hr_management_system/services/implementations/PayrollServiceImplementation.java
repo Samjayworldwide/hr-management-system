@@ -26,10 +26,9 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.YearMonth;
 import java.util.List;
-import java.util.UUID;
 
 import static com.samjay.hr_management_system.constants.Constant.TOTAL_NUMBER_OF_WORKING_DAYS_IN_A_MONTH;
-import static com.samjay.hr_management_system.utils.Utility.getPayslipEmail;
+import static com.samjay.hr_management_system.utils.Utility.*;
 
 @Service
 @RequiredArgsConstructor
@@ -51,23 +50,7 @@ public class PayrollServiceImplementation implements PayrollService {
                 .flatMap(employee -> calculatePayroll(payrollMessage, employee)
                         .flatMap(payrollResult -> {
 
-                            PayrollRecord payrollRecord = new PayrollRecord();
-
-                            payrollRecord.setId(UUID.randomUUID().toString());
-
-                            payrollRecord.setPayrollRunId(payrollMessage.getPayrollRunId());
-
-                            payrollRecord.setEmployeeId(payrollResult.getEmployeeId());
-
-                            payrollRecord.setPayrollPeriod(payrollResult.getPayrollPeriod().toString());
-
-                            payrollRecord.setGrossPay(payrollResult.getGrossPay());
-
-                            payrollRecord.setDeductions(payrollResult.getDeductions());
-
-                            payrollRecord.setPayrollRecordStatus(PayrollRecordStatus.PROCESSED);
-
-                            payrollRecord.setNetPay(payrollResult.getNetPay());
+                            PayrollRecord payrollRecord = mapToPayrollRecordFromPayrollResult(payrollResult, payrollMessage);
 
                             double balance = employee.getWalletBalance();
 
@@ -118,28 +101,7 @@ public class PayrollServiceImplementation implements PayrollService {
 
         return payrollRecordRepository.findAllByPayrollPeriod(yearMonth.toString())
                 .flatMap(payrollRecord -> employeeRepository.findById(payrollRecord.getEmployeeId())
-                        .map(employee -> {
-
-                            PayrollRecordResponse response = new PayrollRecordResponse();
-
-                            response.setEmployeeId(payrollRecord.getEmployeeId());
-
-                            response.setPayrollRunId(payrollRecord.getPayrollRunId());
-
-                            response.setEmployeeName(employee.getFullName());
-
-                            response.setPayrollMonth(payrollRecord.getPayrollPeriod());
-
-                            response.setGrossSalary(payrollRecord.getGrossPay());
-
-                            response.setDeductions(payrollRecord.getDeductions());
-
-                            response.setNetSalary(payrollRecord.getNetPay());
-
-                            response.setPayrollRecordStatus(payrollRecord.getPayrollRecordStatus());
-
-                            return response;
-                        })
+                        .map(employee -> mapToPayrollRecordResponseFromPayrollRecord(payrollRecord, employee))
                         .switchIfEmpty(Mono.error(new ApplicationException("Could not find employee with provided identifier")))
                 )
                 .collectList()
@@ -171,17 +133,7 @@ public class PayrollServiceImplementation implements PayrollService {
                             .flatMap(employee -> payrollRecordRepository.findByEmployeeIdAndPayrollPeriod(employee.getId(), yearMonth.toString())
                                     .map(payrollRecord -> {
 
-                                        EmployeePayrollRecordResponse employeePayrollRecordResponse = new EmployeePayrollRecordResponse();
-
-                                        employeePayrollRecordResponse.setPayrollMonth(payrollRecord.getPayrollPeriod());
-
-                                        employeePayrollRecordResponse.setGrossSalary(payrollRecord.getGrossPay());
-
-                                        employeePayrollRecordResponse.setNetSalary(payrollRecord.getNetPay());
-
-                                        employeePayrollRecordResponse.setDeductions(payrollRecord.getDeductions());
-
-                                        employeePayrollRecordResponse.setPayrollRecordStatus(payrollRecord.getPayrollRecordStatus());
+                                        EmployeePayrollRecordResponse employeePayrollRecordResponse = mapToEmployeePayrollRecordResponseFromPayrollRecord(payrollRecord);
 
                                         return ApiResponse.success("Payroll record retrieved successfully", employeePayrollRecordResponse);
 

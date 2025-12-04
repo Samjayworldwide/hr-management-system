@@ -73,7 +73,6 @@ public class AuthenticationRouterConfiguration {
                 .route()
                 .POST("/login", authenticationHandler::loginEmployeeHandler)
                 .build();
-
     }
 
     @Bean
@@ -124,6 +123,5 @@ public class AuthenticationRouterConfiguration {
                 .route()
                 .POST("/change-login-password", authenticationHandler::changeLoginPasswordHandler)
                 .build();
-
     }
 }

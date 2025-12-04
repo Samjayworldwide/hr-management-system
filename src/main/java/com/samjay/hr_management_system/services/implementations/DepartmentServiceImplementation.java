@@ -10,6 +10,7 @@ import com.samjay.hr_management_system.entities.JobRole;
 import com.samjay.hr_management_system.repositories.DepartmentRepository;
 import com.samjay.hr_management_system.repositories.JobRoleRepository;
 import com.samjay.hr_management_system.services.DepartmentService;
+import com.samjay.hr_management_system.utils.Utility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveRedisOperations;
@@ -17,9 +18,9 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.UUID;
 
 import static com.samjay.hr_management_system.constants.Constant.*;
+import static com.samjay.hr_management_system.utils.Utility.mapToDepartmentFromCreateDepartmentRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -43,19 +44,7 @@ public class DepartmentServiceImplementation implements DepartmentService {
                             if (exists)
                                 return Mono.just(ApiResponse.<String>error("Department already exists"));
 
-                            Department department = new Department();
-
-                            department.setId(UUID.randomUUID().toString());
-
-                            department.setDepartmentName(createDepartmentRequest.getDepartmentName());
-
-                            department.setDepartmentShortCode(createDepartmentRequest.getDepartmentCode());
-
-                            department.setHeadOfDepartment("HOD");
-
-                            department.setOfficeLocation(createDepartmentRequest.getOfficeLocation());
-
-                            department.setNumberOfEmployees(0L);
+                            Department department = mapToDepartmentFromCreateDepartmentRequest(createDepartmentRequest);
 
                             return departmentRepository
                                     .save(department)
@@ -77,7 +66,6 @@ public class DepartmentServiceImplementation implements DepartmentService {
 
                         log.info("Cache HIT for all departments");
 
-                        @SuppressWarnings("unchecked")
                         List<DepartmentResponse> departmentResponses = (List<DepartmentResponse>) cachedList;
 
                         return Mono.just(ApiResponse.success("Departments retrieved successfully", departmentResponses));
@@ -92,22 +80,7 @@ public class DepartmentServiceImplementation implements DepartmentService {
                     return Mono.empty();
 
                 }).switchIfEmpty(departmentRepository.findAll()
-                        .map(department -> {
-
-                            DepartmentResponse departmentResponse = new DepartmentResponse();
-
-                            departmentResponse.setId(department.getId());
-
-                            departmentResponse.setDepartmentName(department.getDepartmentName());
-
-                            departmentResponse.setDepartmentShortCode(department.getDepartmentShortCode());
-
-                            departmentResponse.setOfficeLocation(department.getOfficeLocation());
-
-                            departmentResponse.setNumberOfEmployees(department.getNumberOfEmployees());
-
-                            return departmentResponse;
-                        })
+                        .map(Utility::mapToDepartmentResponseFromDepartment)
                         .collectList()
                         .flatMap(listOfDepartments -> reactiveRedisOperations
                                 .opsForValue()
@@ -155,15 +128,7 @@ public class DepartmentServiceImplementation implements DepartmentService {
                                 .collectList()
                                 .flatMap(jobRoles -> {
 
-                                    DepartmentAndJobRoleResponse response = new DepartmentAndJobRoleResponse();
-
-                                    response.setDepartmentName(department.getDepartmentName());
-
-                                    response.setDepartmentShortCode(department.getDepartmentShortCode());
-
-                                    response.setOfficeLocation(department.getOfficeLocation());
-
-                                    response.setJobRoles(jobRoles);
+                                    DepartmentAndJobRoleResponse response = Utility.mapToDepartmentAndJobRoleResponseFromDepartment(department, jobRoles);
 
                                     return reactiveRedisOperations
                                             .opsForValue()
@@ -199,11 +164,8 @@ public class DepartmentServiceImplementation implements DepartmentService {
                         .flatMap(department -> departmentRepository.existsByDepartmentNameIgnoreCaseAndIdNot(updateDepartmentRequest.getDepartmentName(), departmentId)
                                 .flatMap(duplicateExists -> {
 
-                                    if (duplicateExists) {
-
+                                    if (duplicateExists)
                                         return Mono.just(ApiResponse.<String>error("Another department with the same name exists"));
-
-                                    }
 
                                     department.setDepartmentName(updateDepartmentRequest.getDepartmentName());
 
@@ -217,15 +179,7 @@ public class DepartmentServiceImplementation implements DepartmentService {
                                                     .collectList()
                                                     .flatMap(jobRoles -> {
 
-                                                        DepartmentAndJobRoleResponse response = new DepartmentAndJobRoleResponse();
-
-                                                        response.setDepartmentName(updatedDepartment.getDepartmentName());
-
-                                                        response.setDepartmentShortCode(updatedDepartment.getDepartmentShortCode());
-
-                                                        response.setOfficeLocation(updatedDepartment.getOfficeLocation());
-
-                                                        response.setJobRoles(jobRoles);
+                                                        DepartmentAndJobRoleResponse response = Utility.mapToDepartmentAndJobRoleResponseFromDepartment(updatedDepartment, jobRoles);
 
                                                         return reactiveRedisOperations
                                                                 .opsForValue()
