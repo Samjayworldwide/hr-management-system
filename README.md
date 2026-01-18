@@ -79,57 +79,57 @@ Controller Layer → Service Layer → Repository Layer → Database
 
 ## 1. **Employee Management**
 
-✔ Create employee (Admin-only)
-✔ Read employee records (Admin/HR)
-✔ Employees can view and update their own profile (limited)
-✔ Update sensitive fields (Admin-only)
-✔ Search employees by name, email, department
-✔ Pagination & filtering
-✔ Cascading delete of related data
+* Create employee (Admin-only)
+* Read employee records (Admin/HR)
+* Employees can view and update their own profile (limited)
+* Update sensitive fields (Admin-only)
+* Search employees by name, email, department
+* Pagination & filtering
+* Cascading delete of related data
 
 ---
 
 ## 2. **Department Management**
 
-✔ Create, update, delete departments
-✔ Assign employees to departments
-✔ HR/Admin can view department details
-✔ Employees can view their own departments
-✔ Business rule–driven permissions
+* Create, update, delete departments
+* Assign employees to departments
+* HR/Admin can view department details
+* Employees can view their own departments
+* Business rule–driven permissions
 
 ---
 
 ## 3. **Leave Request Management**
 
-✔ Employees submit leave requests (SICK, VACATION, etc.)
-✔ HR/Admin approve or reject requests
-✔ Leave status tracking (PENDING → APPROVED → REJECTED)
-✔ Leave balance tracking and automatic deduction
-✔ View leave history (per employee, HR overview)
+* Employees submit leave requests (SICK, VACATION, etc.)
+* HR/Admin approve or reject requests
+* Leave status tracking (PENDING → APPROVED → REJECTED)
+* Leave balance tracking and automatic deduction
+* View leave history (per employee, HR overview)
 
 ---
 
 ## 4. **Payroll Processing**
 
-✔ Trigger payroll calculation via API
-✔ Asynchronous processing using RabbitMQ
-✔ Compute net pay using:
+* Trigger payroll calculation via API
+* Asynchronous processing using RabbitMQ
+* Compute net pay using:
 
 * base salary
 * deductions
 * bonuses
-  ✔ Update payroll status (PENDING → PROCESSED → PAID)
-  ✔ View payroll history & payslips
-  ✔ Audit logs for payroll operations
+  - Update payroll status (PENDING → PROCESSED → PAID)
+  - View payroll history & payslips
+  - Audit logs for payroll operations
 
 ---
 
 ## 5. **Authentication & Authorization**
 
-✔ JWT-based stateless authentication
-✔ Login endpoint returning signed JWT
-✔ Password hashing using BCrypt
-✔ Role-Based Access Control (RBAC):
+* JWT-based stateless authentication
+* Login endpoint returning signed JWT
+* Password hashing using BCrypt
+* Role-Based Access Control (RBAC):
 
 * **Admin:** Full access
 * **HR:** Manage leave & payroll, view employees
@@ -139,8 +139,8 @@ Controller Layer → Service Layer → Repository Layer → Database
 
 ## 6. **Auditing & Logging**
 
-✔ Database-level auditing
-✔ Action logs for:
+* Database-level auditing
+* Action logs for:
 
 * Employee creation
 * Updates to salary, role, department
